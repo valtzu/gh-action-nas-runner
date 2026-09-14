@@ -21,30 +21,53 @@ as a Rust toolchain, on its own volume.
 
 ## Setup
 
-1. Put `compose.yaml` on the NAS, e.g. in `/share/Container/gh-action-nas-runner`.
-2. Next to it, write a `.env` with the repository to serve and a registration
-   token (valid for one hour, registers every runner):
+The stack is driven from a workstation, through a Docker context that talks to
+Container Station's Docker engine over TLS. Compose reads `compose.yaml` and
+`.env` from your clone of this repository; the image, the volumes and the
+containers are all on the NAS, and nothing has to be copied there.
+
+1. In Container Station, download the Docker TLS certificate: a zip with
+   `ca.pem`, `cert.pem` and `key.pem`. The server certificate has to list the
+   host name you connect with. Regenerating it with that name also issues a new
+   CA and client certificate, so download the zip after that.
+2. Create the context. Docker copies the three files into its own context
+   store, so the zip and the extracted files can be deleted afterwards:
+
+   ```bash
+   docker context create nas --docker "host=tcp://NAS_HOST:2376,ca=$PWD/ca.pem,cert=$PWD/cert.pem,key=$PWD/key.pem"
+   ```
+
+3. In your clone of this repository, write a `.env` with the repository to
+   serve and a registration token (valid for one hour, registers every runner):
 
    ```bash
    printf 'REPO_URL=https://github.com/OWNER/REPO\nRUNNER_TOKEN=%s\n' "$(gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token)" > .env
    ```
 
-3. Over SSH on the NAS, in that directory:
+4. Start the stack:
 
    ```bash
-   docker compose up -d
+   docker --context nas compose up -d
    ```
 
-4. Once `nas-large-1`, `nas-large-2` and `nas-small-1` to `nas-small-6` show
+5. Once `nas-large-1`, `nas-large-2` and `nas-small-1` to `nas-small-6` show
    as Idle under the repository's Settings > Actions > Runners, empty
-   `RUNNER_TOKEN` in `.env` and run `docker compose up -d` again. That
-   recreates the containers without the token; the volumes, and with them the
-   registrations, stay.
+   `RUNNER_TOKEN` in `.env` and run `docker --context nas compose up -d` again.
+   That recreates the containers without the token; the volumes, and with them
+   the registrations, stay.
+
+`export DOCKER_CONTEXT=nas` saves typing `--context nas` in a shell that only
+talks to the NAS.
+
+Without a workstation, the same works over SSH on the NAS: put `compose.yaml`
+and `.env` in a directory there and run `docker compose up -d` in it. The
+registration token is also shown under Settings > Actions > Runners > New
+self-hosted runner, in the `config.sh` command.
 
 ## The registration token
 
 It is the only secret, and it is never in this repository or the image: it
-lives in `.env` on the NAS (ignored by git), `config.sh` reads it once, and the
+lives in `.env` (ignored by git), `config.sh` reads it once, and the
 entrypoint unsets it before the runner starts, so no job sees it. It expires
 after an hour. From then on each runner authenticates with its own key, kept
 on its volume.
@@ -73,11 +96,12 @@ belong in the `Dockerfile`.
 
 ## Maintenance
 
-- Update to the latest image: `docker compose pull && docker compose up -d`.
+- Update to the latest image:
+  `docker --context nas compose pull && docker --context nas compose up -d`.
 - Build it yourself instead:
   `docker build -t ghcr.io/valtzu/gh-action-nas-runner:latest .`
 - Removing a runner: delete it under Settings > Actions > Runners, then
-  `docker compose down -v`.
+  `docker --context nas compose down -v`.
 
 ## Security
 
@@ -85,3 +109,6 @@ A job can run anything as the `runner` user inside its container. The
 containers mount nothing from the NAS, have no Docker socket, and drop all
 capabilities. Only register them to private repositories: on a public one,
 anyone who can open a pull request can run code here.
+
+The context's client certificate is full control over the NAS's Docker engine,
+which amounts to root on the NAS: keep it on machines you trust.

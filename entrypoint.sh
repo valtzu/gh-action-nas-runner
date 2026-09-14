@@ -5,9 +5,13 @@
 set -eu
 
 dir="$HOME/actions-runner"
-if [ ! -x "$dir/run.sh" ]; then
-  mkdir -p "$dir"
-  tar -xzf /opt/actions-runner.tar.gz -C "$dir"
+if [ ! -d "$dir" ]; then
+  # Into a scratch directory first, so an unpack that fails halfway is redone
+  # on the next start instead of being taken for a runner.
+  rm -rf "$dir.new"
+  mkdir "$dir.new"
+  tar -xzf /opt/actions-runner.tar.gz -C "$dir.new"
+  mv "$dir.new" "$dir"
 fi
 cd "$dir"
 

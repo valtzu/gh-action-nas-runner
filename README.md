@@ -59,8 +59,9 @@ containers are all on the NAS, and nothing has to be copied there.
 `export DOCKER_CONTEXT=nas` saves typing `--context nas` in a shell that only
 talks to the NAS.
 
-Without a workstation, the same works over SSH on the NAS: put `compose.yaml`
-and `.env` in a directory there and run `docker compose up -d` in it. The
+Without a workstation, the same works over SSH on the NAS: put `compose.yaml`,
+`seccomp.json` and `.env` in a directory there and run `docker compose up -d`
+in it. The
 registration token is also shown under Settings > Actions > Runners > New
 self-hosted runner, in the `config.sh` command.
 
@@ -71,6 +72,18 @@ lives in `.env` (ignored by git), `config.sh` reads it once, and the
 entrypoint unsets it before the runner starts, so no job sees it. It expires
 after an hour. From then on each runner authenticates with its own key, kept
 on its volume.
+
+## The seccomp profile
+
+QNAP's 5.10 kernel answers `fchmodat2`, a system call from Linux 6.6, with
+EFAULT where an older kernel says ENOSYS. glibc 2.39 and later changes a
+symlink's mode through it and only falls back on ENOSYS, so in these
+containers GNU tar would fail on every symlink it extracts ("Cannot change
+mode to rwxr-xr-x: Bad address"), `actions/cache` restores included.
+`seccomp.json` is Docker's default profile with that one call answered ENOSYS
+before it reaches the kernel. `make-seccomp.py` writes it from the engine's own
+default; rerun it with `MOBY_REF` bumped when Container Station's Docker
+changes version.
 
 ## Workflow side
 

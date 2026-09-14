@@ -18,7 +18,9 @@ x-runner: &runner
   restart: unless-stopped
   pids_limit: 4096
   cap_drop: [ALL]
-  security_opt: [no-new-privileges:true]
+  # seccomp.json is Docker's default profile with one change, written by
+  # make-seccomp.py; see there for why this kernel needs it.
+  security_opt: [no-new-privileges:true, seccomp=seccomp.json]
   # Nothing else is mounted: no NAS shares, no docker.sock.
 
 x-large: &large

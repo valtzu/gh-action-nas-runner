@@ -1,0 +1,83 @@
+# Self-hosted GitHub Actions runners for a QNAP HS-264 (Celeron N5105, 4 cores,
+# 8 GB), in two pools that workflows pick by label:
+#
+#   nas-large  compile-heavy jobs: up to three cores and 3 GB each, and two of
+#              them, so two such jobs can run side by side.
+#   nas-small  single-threaded, low-memory jobs: one core and 1 GB each, six of
+#              them.
+#
+# The limits add up to more than the NAS has, but they are caps, not
+# reservations. CPU runs out first: more single-threaded runners than cores
+# only time-slice.
+
+x-runner: &runner
+  # Built and published by .github/workflows/publish.yml.
+  image: ghcr.io/valtzu/gh-action-nas-runner:latest
+  # tini as PID 1: forwards SIGTERM to the runner, reaps what jobs leave behind.
+  init: true
+  restart: unless-stopped
+  pids_limit: 4096
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  # Nothing else is mounted: no NAS shares, no docker.sock.
+
+x-large: &large
+  <<: *runner
+  # A lone job gets three cores; QTS keeps one.
+  cpus: 3
+  mem_limit: 3g
+
+x-small: &small
+  <<: *runner
+  cpus: 1
+  mem_limit: 1g
+
+x-env: &env
+  # Both from .env, see README.md. The token is only read on the first start.
+  REPO_URL: ${REPO_URL:?set REPO_URL in .env}
+  RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+
+services:
+  large-1:
+    <<: *large
+    environment: { <<: *env, RUNNER_NAME: nas-large-1, RUNNER_LABELS: nas-large }
+    volumes: [large-1:/home/runner]
+  large-2:
+    <<: *large
+    environment: { <<: *env, RUNNER_NAME: nas-large-2, RUNNER_LABELS: nas-large }
+    volumes: [large-2:/home/runner]
+
+  small-1:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-1, RUNNER_LABELS: nas-small }
+    volumes: [small-1:/home/runner]
+  small-2:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-2, RUNNER_LABELS: nas-small }
+    volumes: [small-2:/home/runner]
+  small-3:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-3, RUNNER_LABELS: nas-small }
+    volumes: [small-3:/home/runner]
+  small-4:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-4, RUNNER_LABELS: nas-small }
+    volumes: [small-4:/home/runner]
+  small-5:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-5, RUNNER_LABELS: nas-small }
+    volumes: [small-5:/home/runner]
+  small-6:
+    <<: *small
+    environment: { <<: *env, RUNNER_NAME: nas-small-6, RUNNER_LABELS: nas-small }
+    volumes: [small-6:/home/runner]
+
+volumes:
+  large-1:
+  large-2:
+  small-1:
+  small-2:
+  small-3:
+  small-4:
+  small-5:
+  small-6:

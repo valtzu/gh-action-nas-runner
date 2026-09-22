@@ -33,6 +33,11 @@ RUN curl -fsSL -o /opt/actions-runner.tar.gz \
 # 1001 like the hosted runner's user; the image's own `ubuntu` user has 1000.
 RUN useradd --create-home --uid 1001 --shell /bin/bash runner
 
+# The mount point of the cache the runners share (compose.yaml). It is in the
+# image, and owned by the runner, so that Docker gives a freshly created volume
+# those permissions: the runner has no root and cannot chown it afterwards.
+RUN mkdir /cache && chown runner:runner /cache
+
 # dtolnay/rust-toolchain installs rustup into $CARGO_HOME when it is missing,
 # and both live on the volume, so a toolchain is downloaded once.
 ENV CARGO_HOME=/home/runner/.cargo \

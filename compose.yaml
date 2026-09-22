@@ -21,7 +21,8 @@ x-runner: &runner
   # seccomp.json is Docker's default profile with one change, written by
   # make-seccomp.py; see there for why this kernel needs it.
   security_opt: [no-new-privileges:true, seccomp=seccomp.json]
-  # Nothing else is mounted: no NAS shares, no docker.sock.
+  # Two volumes each, and nothing else: no NAS shares, no docker.sock. The
+  # runner's own home, and `cache`, which every runner here shares — see below.
 
 x-large: &large
   <<: *runner
@@ -43,38 +44,47 @@ services:
   large-1:
     <<: *large
     environment: { <<: *env, RUNNER_NAME: nas-large-1, RUNNER_LABELS: nas-large }
-    volumes: [large-1:/home/runner]
+    volumes: [large-1:/home/runner, cache:/cache]
   large-2:
     <<: *large
     environment: { <<: *env, RUNNER_NAME: nas-large-2, RUNNER_LABELS: nas-large }
-    volumes: [large-2:/home/runner]
+    volumes: [large-2:/home/runner, cache:/cache]
 
   small-1:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-1, RUNNER_LABELS: nas-small }
-    volumes: [small-1:/home/runner]
+    volumes: [small-1:/home/runner, cache:/cache]
   small-2:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-2, RUNNER_LABELS: nas-small }
-    volumes: [small-2:/home/runner]
+    volumes: [small-2:/home/runner, cache:/cache]
   small-3:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-3, RUNNER_LABELS: nas-small }
-    volumes: [small-3:/home/runner]
+    volumes: [small-3:/home/runner, cache:/cache]
   small-4:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-4, RUNNER_LABELS: nas-small }
-    volumes: [small-4:/home/runner]
+    volumes: [small-4:/home/runner, cache:/cache]
   small-5:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-5, RUNNER_LABELS: nas-small }
-    volumes: [small-5:/home/runner]
+    volumes: [small-5:/home/runner, cache:/cache]
   small-6:
     <<: *small
     environment: { <<: *env, RUNNER_NAME: nas-small-6, RUNNER_LABELS: nas-small }
-    volumes: [small-6:/home/runner]
+    volumes: [small-6:/home/runner, cache:/cache]
 
 volumes:
+  # One directory, `/cache`, that every runner on this host can read and write.
+  # A workflow whose jobs run in more than one pool can hand a build's output
+  # to the jobs that consume it through here instead of through the Actions
+  # cache service, which for a NAS behind a domestic uplink means sending
+  # hundreds of megabytes to the cloud and pulling them back once per consuming
+  # job — slow enough that the restores time out. Nothing writes here unless a
+  # workflow says so, and nothing prunes it either: whatever puts files here
+  # deletes them again.
+  cache:
   large-1:
   large-2:
   small-1:

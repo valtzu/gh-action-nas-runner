@@ -19,6 +19,9 @@ as a Rust toolchain, on its own volume.
 | `nas-large` | 2 | 3 CPUs, 3 GB | compile-heavy jobs |
 | `nas-small` | 6 | 1 CPU, 1 GB | single-threaded, low-memory jobs |
 
+Every runner also mounts one shared volume at `/cache`; see
+[The shared cache](#the-shared-cache).
+
 ## Setup
 
 The stack is driven from a workstation, through a Docker context that talks to
@@ -107,6 +110,41 @@ The image has no sudo, so `apt-get install` steps need
 `if: runner.environment == 'github-hosted'`, and the packages they install
 belong in the `Dockerfile`.
 
+## The shared cache
+
+Every runner mounts the same volume at `/cache`, so a job can hand a file to a
+later job in another pool directly, without the Actions cache service. That
+matters here: the NAS is behind a domestic uplink, so a build's output goes to
+the cloud once and comes back once per consuming job, and a few hundred
+megabytes fanned out over ten jobs is enough for the restores to fail with
+"The operation cannot be completed in timeout."
+
+Name the directory through a repository variable too, so the same workflow
+still works on hosted runners, where the jobs share nothing and the cache
+service is the only way across:
+
+```yaml
+      - uses: actions/cache/save@v6
+        if: vars.RUNNER_CACHE == ''
+        with: { key: build-${{ github.run_id }}, path: out/ }
+      - name: Save to the shared cache
+        if: vars.RUNNER_CACHE != ''
+        run: tar -cf "${{ vars.RUNNER_CACHE }}/build-$GITHUB_RUN_ID.tar" out/
+```
+
+```bash
+gh variable set RUNNER_CACHE --body /cache -R OWNER/REPO
+```
+
+Set it only when every pool the workflow names runs on this host: a job on a
+hosted runner cannot see `/cache`, and the fallback is chosen per workflow, not
+per job.
+
+Nothing prunes `/cache`. A workflow that writes there deletes its own files
+when the run ends — and, because a cancelled run never gets that far, should
+also drop what an earlier run left behind, e.g. `find /cache -maxdepth 1 -name
+'build-*.tar' -mtime +1 -delete`.
+
 ## Maintenance
 
 - Update to the latest image:
@@ -115,12 +153,16 @@ belong in the `Dockerfile`.
   `docker build -t ghcr.io/valtzu/gh-action-nas-runner:latest .`
 - Removing a runner: delete it under Settings > Actions > Runners, then
   `docker --context nas compose down -v`.
+- What the shared cache holds: `docker --context nas run --rm -v
+  gh-action-nas-runner_cache:/cache ghcr.io/valtzu/gh-action-nas-runner ls -l
+  /cache`.
 
 ## Security
 
 A job can run anything as the `runner` user inside its container. The
 containers mount nothing from the NAS, have no Docker socket, and drop all
-capabilities. Only register them to private repositories: on a public one,
+capabilities. They do share `/cache`, so a job can read and overwrite what
+another job put there — one more reason for the rule below. Only register them to private repositories: on a public one,
 anyone who can open a pull request can run code here.
 
 The context's client certificate is full control over the NAS's Docker engine,

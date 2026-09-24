@@ -13,6 +13,7 @@
 x-runner: &runner
   # Built and published by .github/workflows/publish.yml.
   image: ghcr.io/valtzu/gh-action-nas-runner:latest
+  build: .
   # tini as PID 1: forwards SIGTERM to the runner, reaps what jobs leave behind.
   init: true
   restart: unless-stopped
@@ -37,8 +38,9 @@ x-small: &small
 
 x-env: &env
   # Both from .env, see README.md. The token is only read on the first start.
-  REPO_URL: ${REPO_URL:?set REPO_URL in .env}
+  URL: ${URL:-}
   RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+  RUNNER_GROUP: ${RUNNER_GROUP:-}
 
 services:
   large-1:

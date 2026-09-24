@@ -44,7 +44,13 @@ containers are all on the NAS, and nothing has to be copied there.
    serve and a registration token (valid for one hour, registers every runner):
 
    ```bash
-   printf 'REPO_URL=https://github.com/OWNER/REPO\nRUNNER_TOKEN=%s\n' "$(gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token)" > .env
+   printf 'URL=https://github.com/OWNER/REPO\nRUNNER_TOKEN=%s\n' "$(gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token)" > .env
+   ```
+
+   or for organization:
+
+   ```bash
+   printf 'URL=https://github.com/ORG\nRUNNER_TOKEN=%s\nRUNNER_GROUP=YourRunnerGroupName\n' "$(gh api -X POST orgs/ORG/actions/runners/registration-token --jq .token)" > .env
    ```
 
 4. Start the stack:

@@ -16,14 +16,18 @@ fi
 cd "$dir"
 
 if [ ! -f .runner ]; then
-  : "${REPO_URL:?set REPO_URL}"
+  : "${URL:?set URL}"
   : "${RUNNER_TOKEN:?the first start needs RUNNER_TOKEN, see README.md}"
-  ./config.sh --unattended --replace \
-    --url "$REPO_URL" \
+  set -- --unattended --replace \
+    --url "$URL" \
     --token "$RUNNER_TOKEN" \
     --name "${RUNNER_NAME:-$(hostname)}" \
     --labels "${RUNNER_LABELS:-nas}" \
     --work _work
+  if [ -n "${RUNNER_GROUP:-}" ]; then
+    set -- "$@" --runnergroup "$RUNNER_GROUP"
+  fi
+  ./config.sh "$@"
 fi
 
 # The token is only for config.sh; keep it out of every job's environment.

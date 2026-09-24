@@ -29,6 +29,16 @@ RUN apt-get update \
       binutils-aarch64-linux-gnu gh \
  && rm -rf /var/lib/apt/lists/*
 
+# The VideoCore IV cross toolchain, from the forks that publish it as packages
+# for this release of Ubuntu. It installs into /opt/vc4, and jobs that need it
+# take it from there instead of downloading and unpacking it per run; a hosted
+# runner has no such image, so the workflows still install it themselves there.
+RUN curl -fsSL -O "https://github.com/rusty-pi/binutils-vc4/releases/download/latest/vc4-elf-binutils.deb" \
+ && curl -fsSL -O "https://github.com/rusty-pi/gcc-vc4/releases/download/latest/vc4-elf-gcc.deb" \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends ./vc4-elf-binutils.deb ./vc4-elf-gcc.deb \
+ && rm -rf vc4-elf-*.deb /var/lib/apt/lists/*
+
 # Only the tarball goes in the image: entrypoint.sh unpacks it into the volume,
 # where the runner can update itself in place.
 RUN curl -fsSL -o /opt/actions-runner.tar.gz \

@@ -16,12 +16,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 #   mtools, e2fsprogs, fdisk       disk images without root: FAT, ext4, partition tables
 #   openssl, python3               signing and scripting
 #   qemu-user                      running binaries built for other architectures
+#   binutils-aarch64-linux-gnu     assembling and linking for one, next to it
+#   gh                             the GitHub CLI, which workflows call for
+#                                  releases and for the API; the hosted images
+#                                  carry it
 # No sudo: apt steps in workflows must be skipped on this runner.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl libicu78 libssl3t64 libgssapi-krb5-2 zlib1g \
       build-essential pkg-config git zstd xz-utils \
       mtools e2fsprogs fdisk openssl python3 qemu-user \
+      binutils-aarch64-linux-gnu gh \
  && rm -rf /var/lib/apt/lists/*
 
 # Only the tarball goes in the image: entrypoint.sh unpacks it into the volume,

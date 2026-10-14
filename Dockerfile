@@ -17,7 +17,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 #   openssl, python3               signing and scripting
 #   qemu-user                      running binaries built for other architectures
 #   binutils-aarch64-linux-gnu     assembling and linking for one, next to it
-#   gh                             the GitHub CLI, which workflows call for
+#   gcc-aarch64-linux-gnu,         the C cross compiler for aarch64, and its C
+#   libc6-dev-arm64-cross          library's headers and archives
+#   dosfstools, sbsigntool,        FAT images, UEFI binary signing, and signing
+#   python3-cryptography           firmware images from Python
+#   tpm2-tools, cryptsetup-bin     driving a software TPM from a test
+#   acpica-tools, dmidecode        reading ACPI and SMBIOS tables
+#   jq                             building a job matrix from a file listing
+#   gh                           the GitHub CLI, which workflows call for
 #                                  releases and for the API; the hosted images
 #                                  carry it
 # No sudo: apt steps in workflows must be skipped on this runner.
@@ -26,7 +33,10 @@ RUN apt-get update \
       ca-certificates curl libicu78 libssl3t64 libgssapi-krb5-2 zlib1g \
       build-essential pkg-config git zstd xz-utils \
       mtools e2fsprogs fdisk openssl python3 qemu-user \
-      binutils-aarch64-linux-gnu gh \
+      binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+      dosfstools sbsigntool python3-cryptography \
+      tpm2-tools cryptsetup-bin acpica-tools dmidecode jq \
+      gh \
  && rm -rf /var/lib/apt/lists/*
 
 # The VideoCore IV cross toolchain, from the forks that publish it as packages

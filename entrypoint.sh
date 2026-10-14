@@ -21,7 +21,7 @@ if [ ! -f .runner ]; then
   set -- --unattended --replace \
     --url "$URL" \
     --token "$RUNNER_TOKEN" \
-    --name "${RUNNER_NAME:-$(hostname)}" \
+    --name "${RUNNER_NAME:-${RUNNER_NAME_PREFIX:-}$(hostname)}" \
     --labels "${RUNNER_LABELS:-nas}" \
     --work _work
   if [ -n "${RUNNER_GROUP:-}" ]; then

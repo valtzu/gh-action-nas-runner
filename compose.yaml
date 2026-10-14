@@ -3,8 +3,8 @@
 #
 #   nas-large  compile-heavy jobs: up to three cores and 3 GB each, and two of
 #              them, so two such jobs can run side by side.
-#   nas-small  single-threaded, low-memory jobs: one core and 1 GB each, six of
-#              them.
+#   nas-small  single-threaded, low-memory jobs: one core and 1 GB each, twelve
+#              of them.
 #
 # The limits add up to more than the NAS has, but they are caps, not
 # reservations. CPU runs out first: more single-threaded runners than cores
@@ -23,7 +23,11 @@ x-runner: &runner
   # make-seccomp.py; see there for why this kernel needs it.
   security_opt: [no-new-privileges:true, seccomp=seccomp.json]
   # Two volumes each, and nothing else: no NAS shares, no docker.sock. The
-  # runner's own home, and `cache`, which every runner here shares — see below.
+  # runner's own home, which is anonymous so that every replica gets one of its
+  # own (a named volume would be one shared by all of them), and `cache`, which
+  # every runner here shares — see below. `compose up` hands a container's
+  # anonymous volumes on to the one that replaces it; `down -v` and `up -V`
+  # delete them.
 
 x-large: &large
   <<: *runner
@@ -43,39 +47,17 @@ x-env: &env
   RUNNER_GROUP: ${RUNNER_GROUP:-}
 
 services:
-  large-1:
+  large:
     <<: *large
-    environment: { <<: *env, RUNNER_NAME: nas-large-1, RUNNER_LABELS: nas-large }
-    volumes: [large-1:/home/runner, cache:/cache]
-  large-2:
-    <<: *large
-    environment: { <<: *env, RUNNER_NAME: nas-large-2, RUNNER_LABELS: nas-large }
-    volumes: [large-2:/home/runner, cache:/cache]
+    scale: 2
+    environment: { <<: *env, RUNNER_NAME_PREFIX: nas-large-, RUNNER_LABELS: nas-large }
+    volumes: [/home/runner, cache:/cache]
 
-  small-1:
+  small:
     <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-1, RUNNER_LABELS: nas-small }
-    volumes: [small-1:/home/runner, cache:/cache]
-  small-2:
-    <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-2, RUNNER_LABELS: nas-small }
-    volumes: [small-2:/home/runner, cache:/cache]
-  small-3:
-    <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-3, RUNNER_LABELS: nas-small }
-    volumes: [small-3:/home/runner, cache:/cache]
-  small-4:
-    <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-4, RUNNER_LABELS: nas-small }
-    volumes: [small-4:/home/runner, cache:/cache]
-  small-5:
-    <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-5, RUNNER_LABELS: nas-small }
-    volumes: [small-5:/home/runner, cache:/cache]
-  small-6:
-    <<: *small
-    environment: { <<: *env, RUNNER_NAME: nas-small-6, RUNNER_LABELS: nas-small }
-    volumes: [small-6:/home/runner, cache:/cache]
+    scale: 12
+    environment: { <<: *env, RUNNER_NAME_PREFIX: nas-small-, RUNNER_LABELS: nas-small }
+    volumes: [/home/runner, cache:/cache]
 
 volumes:
   # One directory, `/cache`, that every runner on this host can read and write.
@@ -87,11 +69,3 @@ volumes:
   # workflow says so, and nothing prunes it either: whatever puts files here
   # deletes them again.
   cache:
-  large-1:
-  large-2:
-  small-1:
-  small-2:
-  small-3:
-  small-4:
-  small-5:
-  small-6:

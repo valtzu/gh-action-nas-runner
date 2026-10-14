@@ -10,14 +10,18 @@ as the hosted `ubuntu-26.04` runners, so the tool versions match theirs.
 `.github/workflows/publish.yml` builds it on every push to `main`, and weekly
 for security fixes. Each runner keeps its registration, the runner itself
 (which updates in place) and anything installed under its home directory, such
-as a Rust toolchain, on its own volume.
+as a Rust toolchain, on its own anonymous volume.
 
 `compose.yaml` runs two pools, told apart by label:
 
 | label | runners | limits | for |
 |---|---|---|---|
 | `nas-large` | 2 | 3 CPUs, 3 GB | compile-heavy jobs |
-| `nas-small` | 6 | 1 CPU, 1 GB | single-threaded, low-memory jobs |
+| `nas-small` | 12 | 1 CPU, 1 GB | single-threaded, low-memory jobs |
+
+Each pool is one service with a `scale`, so the number of runners is that one
+line. A runner is named after its pool and its container, e.g.
+`nas-small-3f9a1c2b4d5e`; workflows pick runners by label and never by name.
 
 Every runner also mounts one shared volume at `/cache`; see
 [The shared cache](#the-shared-cache).
@@ -59,11 +63,16 @@ containers are all on the NAS, and nothing has to be copied there.
    docker --context nas compose up -d
    ```
 
-5. Once `nas-large-1`, `nas-large-2` and `nas-small-1` to `nas-small-6` show
-   as Idle under the repository's Settings > Actions > Runners, empty
-   `RUNNER_TOKEN` in `.env` and run `docker --context nas compose up -d` again.
-   That recreates the containers without the token; the volumes, and with them
-   the registrations, stay.
+5. Once all 14 runners show as Idle under the repository's Settings > Actions >
+   Runners, empty `RUNNER_TOKEN` in `.env` and run
+   `docker --context nas compose up -d` again. That recreates the containers
+   without the token; their anonymous volumes, and with them the registrations,
+   stay.
+
+Raising a `scale` starts new runners, and they register on their first start:
+put a fresh `RUNNER_TOKEN` in `.env` for that `compose up -d`, and empty it
+afterwards. Lowering it stops the surplus runners; delete them under Settings >
+Actions > Runners, and `docker volume prune` removes their volumes.
 
 `export DOCKER_CONTEXT=nas` saves typing `--context nas` in a shell that only
 talks to the NAS.
@@ -157,8 +166,9 @@ also drop what an earlier run left behind, e.g. `find /cache -maxdepth 1 -name
   `docker --context nas compose pull && docker --context nas compose up -d`.
 - Build it yourself instead:
   `docker build -t ghcr.io/valtzu/gh-action-nas-runner:latest .`
-- Removing a runner: delete it under Settings > Actions > Runners, then
-  `docker --context nas compose down -v`.
+- Removing every runner: delete them under Settings > Actions > Runners, then
+  `docker --context nas compose down -v`, which deletes the runners' volumes
+  and the shared cache.
 - What the shared cache holds: `docker --context nas run --rm -v
   gh-action-nas-runner_cache:/cache ghcr.io/valtzu/gh-action-nas-runner ls -l
   /cache`.

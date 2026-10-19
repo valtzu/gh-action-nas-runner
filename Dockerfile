@@ -6,6 +6,13 @@ FROM ubuntu:26.04
 ARG RUNNER_VERSION=2.337.0
 ARG RUNNER_SHA256=70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613
 
+# The VC4 toolchain release tags and package checksums nuboot pins in its
+# scripts/toolchain.env. Bump them together with that file.
+ARG BINUTILS_VC4_TAG=vc4-1a345e8d59
+ARG BINUTILS_VC4_SHA256=21d9c95b2a1874463c4beecf39956ec39b79c257d653ab9f0b6b8a81ee73b619
+ARG GCC_VC4_TAG=vc4-a087bd8259
+ARG GCC_VC4_SHA256=bbcbe13379bf343a3c3230e1111e9ad12215634913eef4d5157fa0900a7b57a2
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # The runner's own (.NET) dependencies, then the build tools jobs expect:
@@ -43,9 +50,11 @@ RUN apt-get update \
 # The VideoCore IV cross toolchain, from the forks that publish it as packages
 # for this release of Ubuntu. It installs into /opt/vc4, and jobs that need it
 # take it from there instead of downloading and unpacking it per run; a hosted
-# runner has no such image, so the workflows still install it themselves there.
-RUN curl -fsSL -O "https://github.com/rusty-pi/binutils-vc4/releases/download/latest/vc4-elf-binutils.deb" \
- && curl -fsSL -O "https://github.com/rusty-pi/gcc-vc4/releases/download/latest/vc4-elf-gcc.deb" \
+# runner has no such image, so the workflows still install it themselves there,
+# and a job that pins other tags fails here, with no sudo to install them.
+RUN curl -fsSL -O "https://github.com/rusty-pi/binutils-vc4/releases/download/${BINUTILS_VC4_TAG}/vc4-elf-binutils.deb" \
+ && curl -fsSL -O "https://github.com/rusty-pi/gcc-vc4/releases/download/${GCC_VC4_TAG}/vc4-elf-gcc.deb" \
+ && printf '%s  %s\n' "${BINUTILS_VC4_SHA256}" vc4-elf-binutils.deb "${GCC_VC4_SHA256}" vc4-elf-gcc.deb | sha256sum -c - \
  && apt-get update \
  && apt-get install -y --no-install-recommends ./vc4-elf-binutils.deb ./vc4-elf-gcc.deb \
  && rm -rf vc4-elf-*.deb /var/lib/apt/lists/*

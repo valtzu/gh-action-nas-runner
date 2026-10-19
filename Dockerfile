@@ -21,6 +21,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 #   libc6-dev-arm64-cross          library's headers and archives
 #   dosfstools, sbsigntool,        FAT images, UEFI binary signing, and signing
 #   python3-cryptography           firmware images from Python
+#   gcab                           the cabinet an fwupd update ships in
 #   tpm2-tools, cryptsetup-bin     driving a software TPM from a test
 #   acpica-tools, dmidecode        reading ACPI and SMBIOS tables
 #   jq                             building a job matrix from a file listing
@@ -34,7 +35,7 @@ RUN apt-get update \
       build-essential pkg-config git zstd xz-utils \
       mtools e2fsprogs fdisk openssl python3 qemu-user \
       binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
-      dosfstools sbsigntool python3-cryptography \
+      dosfstools sbsigntool python3-cryptography gcab \
       tpm2-tools cryptsetup-bin acpica-tools dmidecode jq \
       gh \
  && rm -rf /var/lib/apt/lists/*
